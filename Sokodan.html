@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sokoban Game</title>
+    <style>
+        body {
+            background: #888;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #game {
+            font-family: monospace;
+            margin: 40px auto 0 auto;
+            display: inline-block;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+            padding: 24px;
+            border-radius: 12px;
+            background: #f0f0f0;
+        }
+        .row { display: flex; }
+        .cell { width: 24px; height: 24px; text-align: center; }
+        .wall { background: #444; }
+        .floor { background: #eee; }
+        .goal { background: gold; }
+        .box { background: #b5651d; }
+        .player { background: #4caf50; }
+    </style>
+</head>
+<body>
+    <div id="game"></div>
+    <script src="sokobanbase.js"></script>
+    <script>
+        const tileToClass = {
+            'W': 'wall',
+            ' ': 'floor',
+            'G': 'goal',
+            'B': 'box',
+            'P': 'player'
+        };
+
+        const tileToEmoji = {
+            'W': '',
+            ' ': '',
+            'G': '●',
+            'B': '■',
+            'P': '☺'
+        };
+
+        let map = JSON.parse(JSON.stringify(tileMap01.mapGrid));
+        let playerPos = { x: 0, y: 0 };
+
+        // Store where the goals are
+        let goals = [];
+        for (let y = 0; y < map.length; y++) {
+            goals[y] = [];
+            for (let x = 0; x < map[y].length; x++) {
+                goals[y][x] = map[y][x][0] === 'G';
+                if (map[y][x][0] === 'P') {
+                    playerPos = { x, y };
+                }
+            }
+        }
+
+        function checkWin() {
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    if (goals[y][x] && map[y][x][0] !== 'B') {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        function render() {
+            const gameDiv = document.getElementById('game');
+            gameDiv.innerHTML = '';
+            for (let y = 0; y < map.length; y++) {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'row';
+                for (let x = 0; x < map[y].length; x++) {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+                    if (goals[y][x]) cellDiv.classList.add('goal');
+                    const tile = map[y][x][0];
+                    if (tileToClass[tile] && tile !== 'G') cellDiv.classList.add(tileToClass[tile]);
+                    if (tile === 'P' || tile === 'B') {
+                        cellDiv.textContent = tileToEmoji[tile];
+                    } else if (goals[y][x]) {
+                        cellDiv.textContent = tileToEmoji['G'];
+                    } else {
+                        cellDiv.textContent = '';
+                    }
+                    rowDiv.appendChild(cellDiv);
+                }
+                gameDiv.appendChild(rowDiv);
+            }
+            // Show win message if game is won
+            if (checkWin()) {
+                const winDiv = document.createElement('div');
+                winDiv.style.fontSize = '2em';
+                winDiv.style.color = 'green';
+                winDiv.style.marginTop = '20px';
+                winDiv.textContent = 'Wow!';
+                gameDiv.appendChild(winDiv);
+            }
+        }
+
+        function move(dx, dy) {
+            if (checkWin()) return; // Prevent moving after win
+            const nx = playerPos.x + dx;
+            const ny = playerPos.y + dy;
+            if (ny < 0 || ny >= map.length || nx < 0 || nx >= map[0].length) return;
+            const next = map[ny][nx][0];
+            if (next === 'W') return; // Wall
+
+            // If next is box, try to push
+            if (next === 'B') {
+                const bx = nx + dx;
+                const by = ny + dy;
+                if (by < 0 || by >= map.length || bx < 0 || bx >= map[0].length) return;
+                if (map[by][bx][0] === ' ' || map[by][bx][0] === 'G') {
+                    // Move box
+                    map[by][bx][0] = 'B';
+                    map[ny][nx][0] = 'P';
+                    map[playerPos.y][playerPos.x][0] = goals[playerPos.y][playerPos.x] ? 'G' : ' ';
+                    playerPos = { x: nx, y: ny };
+                }
+            } else if (next === ' ' || next === 'G') {
+                map[ny][nx][0] = 'P';
+                map[playerPos.y][playerPos.x][0] = goals[playerPos.y][playerPos.x] ? 'G' : ' ';
+                playerPos = { x: nx, y: ny };
+            }
+            render();
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowUp') move(0, -1);
+            if (e.key === 'ArrowDown') move(0, 1);
+            if (e.key === 'ArrowLeft') move(-1, 0);
+            if (e.key === 'ArrowRight') move(1, 0);
+        });
+
+        render();
+    </script>
+</body>
+</html>
